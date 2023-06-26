@@ -2,4 +2,8 @@ spring:
     batch:
         job:
             names: ${job.name:NONE}
-    initialize-schema: always
+        initialize-schema: always
+    datasource:
+        driver-class-name: org.h2.Driver
+        data: classpath:person.sql
+        initialization-mode: always
