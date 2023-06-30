@@ -96,6 +96,6 @@ aaa, 12, seoul
 bbb, 23, tokyo
 ccc, 11, london
 aaa, 12, seoul
-bbb, 23, tokyo
-ccc, 11, london
-ccc, 11, london
+, 23, tokyo
+, 11, london
+, 11, london

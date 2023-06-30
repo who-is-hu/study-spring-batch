@@ -7,6 +7,7 @@ import org.springframework.batch.core.configuration.annotation.JobBuilderFactory
 import org.springframework.batch.core.configuration.annotation.JobScope;
 import org.springframework.batch.core.configuration.annotation.StepBuilderFactory;
 import org.springframework.batch.core.launch.support.RunIdIncrementer;
+import org.springframework.batch.item.ItemProcessor;
 import org.springframework.batch.item.ItemWriter;
 import org.springframework.batch.item.database.JpaItemWriter;
 import org.springframework.batch.item.database.builder.JpaItemWriterBuilder;
@@ -14,7 +15,9 @@ import org.springframework.batch.item.file.FlatFileItemReader;
 import org.springframework.batch.item.file.builder.FlatFileItemReaderBuilder;
 import org.springframework.batch.item.file.mapping.DefaultLineMapper;
 import org.springframework.batch.item.file.transform.DelimitedLineTokenizer;
+import org.springframework.batch.item.support.CompositeItemProcessor;
 import org.springframework.batch.item.support.CompositeItemWriter;
+import org.springframework.batch.item.support.builder.CompositeItemProcessorBuilder;
 import org.springframework.batch.item.support.builder.CompositeItemWriterBuilder;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -23,6 +26,7 @@ import org.springframework.core.io.ClassPathResource;
 
 import javax.persistence.EntityManagerFactory;
 import java.util.function.Consumer;
+import java.util.function.Function;
 
 @Configuration
 @Slf4j
@@ -54,10 +58,33 @@ public class CsvToDbConfig {
 		return stepBuilderFactory.get("csvToDbStep")
 			.<Person, Person>chunk(10)
 			.reader(csvFileItemReader())
-			.processor(new DuplicateValidationProcessor<Person>(Person::getName, Boolean.parseBoolean(allowDuplicate)))
+//			.processor(new DuplicateValidationProcessor<Person>(Person::getName, Boolean.parseBoolean(allowDuplicate)))
+			.processor(itemProcessor(allowDuplicate))
 			.writer(itemWriter())
 			.listener(new SavePersonListener.SavePersonStepExecutionListener())
+			.faultTolerant()
+			.skip(NotFoundNameException.class)
+			.skipLimit(2) // 에러가 이거보다 낮아야 skipListener 동작, 스킵되어야 발생
 			.build();
+	}
+
+	private ItemProcessor<Person, Person> itemProcessor(String allowDuplicate) throws Exception {
+		DuplicateValidationProcessor<Person> duplicateValidationProcessor =
+			new DuplicateValidationProcessor<>(Person::getName, Boolean.parseBoolean(allowDuplicate));
+		ItemProcessor<Person, Person> validateProcessor = item -> {
+			if(item.isNotEmpty()){
+				return item;
+			}
+			throw new NotFoundNameException();
+		};
+
+		CompositeItemProcessor<Person, Person> itemProcessor = new CompositeItemProcessorBuilder<Person, Person>()
+//			.delegates(validateProcessor, duplicateValidationProcessor)
+			.delegates(new PersonValidationRetryProcessor(), duplicateValidationProcessor)
+			.build();
+		itemProcessor.afterPropertiesSet();
+
+		return itemProcessor;
 	}
 
 	private ItemWriter<? super Person> itemWriter() throws Exception {
