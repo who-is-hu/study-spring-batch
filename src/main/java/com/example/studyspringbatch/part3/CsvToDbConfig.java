@@ -42,6 +42,8 @@ public class CsvToDbConfig {
 		return jobBuilderFactory.get("csvToDbJob")
 			.incrementer(new RunIdIncrementer())
 			.start(this.csvToDbStep(null))
+			.listener(new SavePersonListener.SavePersonJobExecutionListener())
+			.listener(new SavePersonListener.SavePersonAnnotationJobExecution())
 			.build();
 	}
 
@@ -54,6 +56,7 @@ public class CsvToDbConfig {
 			.reader(csvFileItemReader())
 			.processor(new DuplicateValidationProcessor<Person>(Person::getName, Boolean.parseBoolean(allowDuplicate)))
 			.writer(itemWriter())
+			.listener(new SavePersonListener.SavePersonStepExecutionListener())
 			.build();
 	}
 
