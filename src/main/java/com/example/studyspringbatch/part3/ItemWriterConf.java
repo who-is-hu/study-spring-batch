@@ -47,7 +47,7 @@ public class ItemWriterConf {
 			.incrementer(new RunIdIncrementer())
 			.start(this.csvItemWriterStep())
 //			.next(this.jdbcBatchItemWriterStep())
-			.next(this.jpaItemWriterStep())
+//			.next(this.jpaItemWriterStep())
 			.build();
 	}
 
