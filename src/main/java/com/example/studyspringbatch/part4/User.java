@@ -1,8 +1,10 @@
 package com.example.studyspringbatch.part4;
 
+import com.example.studyspringbatch.part5.Orders;
 import lombok.*;
 
 import javax.persistence.*;
+import java.util.List;
 import java.util.Objects;
 
 enum Level {
@@ -67,15 +69,22 @@ public class User {
 	@Enumerated(EnumType.STRING)
 	private Level level = Level.NORMAL;
 
-	@Column(name = "purchase_amount")
-	private Integer purchaseAmount;
+	@OneToMany(cascade = CascadeType.PERSIST)
+	@JoinColumn(name = "user_id")
+	List<Orders> orders;
+
+	private int getTotalAmount(){
+		 return this.orders.stream()
+			 .mapToInt(Orders::getAmount)
+			 .sum();
+	}
 
 	public boolean availableLevelUp() {
-		return Level.availableLevelUp(this.level, this.purchaseAmount);
+		return Level.availableLevelUp(this.level, this.getTotalAmount());
 	}
 
 	public Level levelUp(){
-		Level nextLevel = Level.getNextLevel(this.purchaseAmount);
+		Level nextLevel = Level.getNextLevel(this.getTotalAmount());
 
 		this.level = nextLevel;
 
